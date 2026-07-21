@@ -1,0 +1,21 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build MarkDownshift
+        run: ./scripts/build-app.sh
+      - name: Validate bundle
+        run: |
+          test -x "dist/MarkDownshift.app/Contents/MacOS/MarkDownshift"
+          plutil -lint "dist/MarkDownshift.app/Contents/Info.plist"

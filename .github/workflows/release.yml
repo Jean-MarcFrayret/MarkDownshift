@@ -1,0 +1,23 @@
+name: Build release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Universal application
+        run: ./scripts/build-universal-app.sh
+      - name: Package application
+        run: ditto -c -k --sequesterRsrc --keepParent "dist/MarkDownshift.app" "dist/MarkDownshift-${{ github.ref_name }}-universal.zip"
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/MarkDownshift-${{ github.ref_name }}-universal.zip
+          generate_release_notes: true
