@@ -1,5 +1,10 @@
 # MarkDownshift Changelog
 
+## [1.4.1] - 2026-07-22
+
+- Fixed blank PDF exports with deterministic Core Text page rendering
+- Added **File → Export → Export as PDF…**
+
 ## [1.4.0] - 2026-07-22
 
 - Added formatted, paginated PDF export

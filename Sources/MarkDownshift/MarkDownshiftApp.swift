@@ -24,6 +24,7 @@ struct MarkDownshiftApp: App {
                 Button("Link") { FormatCommand.link.send() }.keyboardShortcut("k")
                 Button("Inline Code") { FormatCommand.code.send() }
             }
+            ExportCommands()
         }
     }
 }

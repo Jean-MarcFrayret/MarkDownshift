@@ -34,6 +34,9 @@ struct ContentView: View {
                 }
             }
         }
+        .focusedSceneValue(\.exportPDF) {
+            PDFExporter.export(markdown: text, suggestedName: documentName)
+        }
     }
 
     private var editor: some View {

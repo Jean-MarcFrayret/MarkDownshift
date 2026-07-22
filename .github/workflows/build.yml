@@ -19,3 +19,5 @@ jobs:
         run: |
           test -x "dist/MarkDownshift.app/Contents/MacOS/MarkDownshift"
           plutil -lint "dist/MarkDownshift.app/Contents/Info.plist"
+      - name: Verify PDF export content
+        run: ./scripts/test-pdf-export.sh

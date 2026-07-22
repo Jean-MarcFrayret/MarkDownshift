@@ -1,11 +1,10 @@
 import AppKit
-import WebKit
+import CoreText
+import CoreGraphics
 import UniformTypeIdentifiers
 
-@MainActor
 enum PDFExporter {
-    private static var activeExports: [PDFExportController] = []
-
+    @MainActor
     static func export(markdown: String, suggestedName: String?) {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.pdf]
@@ -13,61 +12,65 @@ enum PDFExporter {
         panel.nameFieldStringValue = "\(suggestedName ?? "Untitled").pdf"
 
         guard panel.runModal() == .OK, let destination = panel.url else { return }
-        let controller = PDFExportController(destination: destination) { finished in
-            activeExports.removeAll { $0 === finished }
+        do {
+            try write(markdown: markdown, to: destination)
+        } catch {
+            NSAlert(error: error).runModal()
         }
-        activeExports.append(controller)
-        controller.begin(html: MarkdownHTMLRenderer.render(markdown))
+    }
+
+    static func write(markdown: String, to destination: URL) throws {
+        let html = MarkdownHTMLRenderer.render(markdown)
+        guard let htmlData = html.data(using: .utf8) else { throw PDFExportError.encoding }
+        let attributed = try NSAttributedString(
+            data: htmlData,
+            options: [
+                .documentType: NSAttributedString.DocumentType.html,
+                .characterEncoding: String.Encoding.utf8.rawValue
+            ],
+            documentAttributes: nil
+        )
+
+        var mediaBox = CGRect(x: 0, y: 0, width: 612, height: 792)
+        guard let consumer = CGDataConsumer(url: destination as CFURL),
+              let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else {
+            throw PDFExportError.cannotCreateFile
+        }
+
+        let framesetter = CTFramesetterCreateWithAttributedString(attributed)
+        let contentRect = CGRect(x: 44, y: 44, width: 524, height: 704)
+        var offset = 0
+        repeat {
+            context.beginPDFPage(nil)
+            let path = CGPath(rect: contentRect, transform: nil)
+            let frame = CTFramesetterCreateFrame(
+                framesetter,
+                CFRange(location: offset, length: 0),
+                path,
+                nil
+            )
+            CTFrameDraw(frame, context)
+            let visible = CTFrameGetVisibleStringRange(frame)
+            context.endPDFPage()
+            guard visible.length > 0 || attributed.length == 0 else {
+                context.closePDF()
+                throw PDFExportError.layout
+            }
+            offset += visible.length
+        } while offset < attributed.length
+        context.closePDF()
     }
 }
 
-@MainActor
-private final class PDFExportController: NSObject, WKNavigationDelegate {
-    private let destination: URL
-    private let completion: (PDFExportController) -> Void
-    private let webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 612, height: 792))
+private enum PDFExportError: LocalizedError {
+    case encoding, cannotCreateFile, layout
 
-    init(destination: URL, completion: @escaping (PDFExportController) -> Void) {
-        self.destination = destination
-        self.completion = completion
-        super.init()
-        webView.navigationDelegate = self
-    }
-
-    func begin(html: String) {
-        webView.loadHTMLString(html, baseURL: nil)
-    }
-
-    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        let printInfo = NSPrintInfo.shared.copy() as! NSPrintInfo
-        printInfo.paperSize = NSSize(width: 612, height: 792)
-        printInfo.topMargin = 36
-        printInfo.bottomMargin = 36
-        printInfo.leftMargin = 44
-        printInfo.rightMargin = 44
-        printInfo.horizontalPagination = .fit
-        printInfo.verticalPagination = .automatic
-        printInfo.jobDisposition = .save
-        printInfo.dictionary()[NSPrintInfo.AttributeKey.jobSavingURL] = destination
-
-        let operation = NSPrintOperation(view: webView, printInfo: printInfo)
-        operation.showsPrintPanel = false
-        operation.showsProgressPanel = true
-        operation.run()
-        completion(self)
-    }
-
-    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        showError(error)
-    }
-
-    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        showError(error)
-    }
-
-    private func showError(_ error: Error) {
-        NSAlert(error: error).runModal()
-        completion(self)
+    var errorDescription: String? {
+        switch self {
+        case .encoding: "The Markdown document could not be encoded for PDF export."
+        case .cannotCreateFile: "The PDF file could not be created at the selected location."
+        case .layout: "The document could not be laid out on a PDF page."
+        }
     }
 }
 
