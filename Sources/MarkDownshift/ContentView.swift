@@ -10,12 +10,15 @@ enum ViewMode: String, CaseIterable, Identifiable {
 
 struct ContentView: View {
     @Binding var text: String
+    let documentName: String?
     @State private var mode: ViewMode = .split
     @State private var zoomScale = 1.0
 
     var body: some View {
         VStack(spacing: 0) {
-            FormatToolbar(mode: $mode, zoomScale: $zoomScale)
+            FormatToolbar(mode: $mode, zoomScale: $zoomScale) {
+                PDFExporter.export(markdown: text, suggestedName: documentName)
+            }
             Divider()
             Group {
                 switch mode {
@@ -41,6 +44,7 @@ struct ContentView: View {
 struct FormatToolbar: View {
     @Binding var mode: ViewMode
     @Binding var zoomScale: Double
+    let exportPDF: () -> Void
 
     private let minimumZoom = 0.75
     private let maximumZoom = 2.0
@@ -97,6 +101,12 @@ struct FormatToolbar: View {
             .pickerStyle(.segmented)
             .labelsHidden()
             .frame(width: 190)
+            Button(action: exportPDF) {
+                Image(systemName: "doc.richtext")
+                    .frame(width: 20, height: 20)
+            }
+            .buttonStyle(.borderless)
+            .help("Export PDF…")
             Button {
                 NSApp.keyWindow?.performClose(nil)
             } label: {
@@ -205,7 +215,7 @@ struct MarkdownPreview: View {
     private func scaled(_ size: Double) -> Double { size * zoomScale }
 }
 
-private enum MarkdownBlock {
+enum MarkdownBlock {
     case heading(Int, String)
     case paragraph(String)
     case bullet(String)

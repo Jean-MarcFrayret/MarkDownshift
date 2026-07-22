@@ -1,5 +1,10 @@
 # MarkDownshift Changelog
 
+## [1.4.0] - 2026-07-22
+
+- Added formatted, paginated PDF export
+- Added a native Save dialog for choosing the PDF destination
+
 ## [1.3.0] - 2026-07-22
 
 - Added synchronized editor and preview zoom controls

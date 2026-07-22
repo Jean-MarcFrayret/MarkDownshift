@@ -5,7 +5,10 @@ import UniformTypeIdentifiers
 struct MarkDownshiftApp: App {
     var body: some Scene {
         DocumentGroup(newDocument: MarkdownFile()) { file in
-            ContentView(text: file.$document.text)
+            ContentView(
+                text: file.$document.text,
+                documentName: file.fileURL?.deletingPathExtension().lastPathComponent
+            )
                 .frame(minWidth: 760, minHeight: 500)
         }
         .commands {

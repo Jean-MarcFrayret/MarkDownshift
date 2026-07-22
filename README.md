@@ -4,7 +4,7 @@ MarkDownshift is a small, native Markdown editor for macOS. It opens and saves `
 
 ![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-black)
 ![License](https://img.shields.io/badge/license-MIT-gold)
-![Version](https://img.shields.io/badge/version-1.3-red)
+![Version](https://img.shields.io/badge/version-1.4-red)
 
 ## Features
 
@@ -16,6 +16,7 @@ MarkDownshift is a small, native Markdown editor for macOS. It opens and saves `
 - Native macOS document handling and unsaved-change protection
 - Standard shortcuts: `⌘N`, `⌘O`, `⌘S`, `⇧⌘S`, `⌘W`, `⌘B`, and `⌘I`
 - Synchronized editor and preview zoom from 75% to 200%
+- Formatted, paginated PDF export through a standard macOS Save dialog
 - No telemetry, accounts, network access, or data collection
 
 ## Requirements
