@@ -11,21 +11,22 @@ enum ViewMode: String, CaseIterable, Identifiable {
 struct ContentView: View {
     @Binding var text: String
     @State private var mode: ViewMode = .split
+    @State private var zoomScale = 1.0
 
     var body: some View {
         VStack(spacing: 0) {
-            FormatToolbar(mode: $mode)
+            FormatToolbar(mode: $mode, zoomScale: $zoomScale)
             Divider()
             Group {
                 switch mode {
                 case .edit:
                     editor
                 case .preview:
-                    MarkdownPreview(markdown: text)
+                    MarkdownPreview(markdown: text, zoomScale: zoomScale)
                 case .split:
                     HSplitView {
                         editor
-                        MarkdownPreview(markdown: text)
+                        MarkdownPreview(markdown: text, zoomScale: zoomScale)
                     }
                 }
             }
@@ -33,12 +34,17 @@ struct ContentView: View {
     }
 
     private var editor: some View {
-        MarkdownTextEditor(text: $text).frame(minWidth: 300)
+        MarkdownTextEditor(text: $text, fontSize: 15 * zoomScale).frame(minWidth: 300)
     }
 }
 
 struct FormatToolbar: View {
     @Binding var mode: ViewMode
+    @Binding var zoomScale: Double
+
+    private let minimumZoom = 0.75
+    private let maximumZoom = 2.0
+    private let zoomStep = 0.125
 
     var body: some View {
         HStack(spacing: 6) {
@@ -57,6 +63,34 @@ struct FormatToolbar: View {
                 formatButton(.code, systemImage: "chevron.left.forwardslash.chevron.right")
             }
             Spacer()
+            HStack(spacing: 2) {
+                Button { changeZoom(by: -zoomStep) } label: {
+                    Image(systemName: "minus.magnifyingglass")
+                        .frame(width: 22, height: 22)
+                }
+                .buttonStyle(.borderless)
+                .keyboardShortcut("-", modifiers: .command)
+                .disabled(zoomScale <= minimumZoom)
+                .help("Zoom Out (⌘−)")
+
+                Button { zoomScale = 1.0 } label: {
+                    Text("\(Int((zoomScale * 100).rounded()))%")
+                        .monospacedDigit()
+                        .frame(width: 42)
+                }
+                .buttonStyle(.borderless)
+                .keyboardShortcut("0", modifiers: .command)
+                .help("Actual Size (⌘0)")
+
+                Button { changeZoom(by: zoomStep) } label: {
+                    Image(systemName: "plus.magnifyingglass")
+                        .frame(width: 22, height: 22)
+                }
+                .buttonStyle(.borderless)
+                .keyboardShortcut("=", modifiers: .command)
+                .disabled(zoomScale >= maximumZoom)
+                .help("Zoom In (⌘+)")
+            }
             Picker("View", selection: $mode) {
                 ForEach(ViewMode.allCases) { Text($0.rawValue).tag($0) }
             }
@@ -77,6 +111,10 @@ struct FormatToolbar: View {
         .background(.bar)
     }
 
+    private func changeZoom(by amount: Double) {
+        zoomScale = min(maximumZoom, max(minimumZoom, zoomScale + amount))
+    }
+
     private func formatButton(_ command: FormatCommand, systemImage: String) -> some View {
         Button { command.send() } label: {
             Image(systemName: systemImage).frame(width: 22, height: 22)
@@ -95,17 +133,18 @@ struct FormatToolbar: View {
 
 struct MarkdownPreview: View {
     let markdown: String
+    let zoomScale: Double
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 12) {
+            LazyVStack(alignment: .leading, spacing: 12 * zoomScale) {
                 ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
                     blockView(block)
                 }
             }
             .textSelection(.enabled)
             .frame(maxWidth: .infinity, alignment: .topLeading)
-            .padding(28)
+            .padding(28 * zoomScale)
         }
         .frame(minWidth: 300)
         .background(Color(nsColor: .textBackgroundColor))
@@ -118,32 +157,35 @@ struct MarkdownPreview: View {
         switch block {
         case let .heading(level, text):
             Text(inline(text))
-                .font(.system(size: level == 1 ? 28 : level == 2 ? 23 : 19, weight: .bold))
+                .font(.system(size: scaled(level == 1 ? 28 : level == 2 ? 23 : 19), weight: .bold))
                 .padding(.top, level == 1 ? 6 : 2)
         case let .paragraph(text):
-            Text(inline(text)).font(.body).lineSpacing(4)
+            Text(inline(text)).font(.system(size: scaled(16))).lineSpacing(4 * zoomScale)
         case let .bullet(text):
             HStack(alignment: .firstTextBaseline, spacing: 9) {
                 Text("•").fontWeight(.bold)
                 Text(inline(text)).lineSpacing(3)
             }
+            .font(.system(size: scaled(16)))
             .padding(.leading, 8)
         case let .numbered(number, text):
             HStack(alignment: .firstTextBaseline, spacing: 9) {
                 Text("\(number).").fontWeight(.semibold).frame(minWidth: 24, alignment: .trailing)
                 Text(inline(text)).lineSpacing(3)
             }
+            .font(.system(size: scaled(16)))
             .padding(.leading, 4)
         case let .quote(text):
             HStack(spacing: 12) {
                 Rectangle().fill(Color.accentColor.opacity(0.7)).frame(width: 3)
                 Text(inline(text)).italic().foregroundStyle(.secondary).lineSpacing(3)
             }
+            .font(.system(size: scaled(16)))
             .padding(.vertical, 3)
         case let .code(text):
             ScrollView(.horizontal) {
                 Text(text)
-                    .font(.system(.body, design: .monospaced))
+                    .font(.system(size: scaled(15), design: .monospaced))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
             }
@@ -159,6 +201,8 @@ struct MarkdownPreview: View {
             options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
         )) ?? AttributedString(source)
     }
+
+    private func scaled(_ size: Double) -> Double { size * zoomScale }
 }
 
 private enum MarkdownBlock {

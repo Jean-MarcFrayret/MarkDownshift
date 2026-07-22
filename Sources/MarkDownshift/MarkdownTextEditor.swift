@@ -31,6 +31,7 @@ enum FormatCommand: String, CaseIterable {
 
 struct MarkdownTextEditor: NSViewRepresentable {
     @Binding var text: String
+    let fontSize: Double
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -45,7 +46,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
         editor.isAutomaticQuoteSubstitutionEnabled = false
         editor.isAutomaticDashSubstitutionEnabled = false
         editor.allowsUndo = true
-        editor.font = .monospacedSystemFont(ofSize: 14, weight: .regular)
+        editor.font = .monospacedSystemFont(ofSize: fontSize, weight: .regular)
         editor.textContainerInset = NSSize(width: 18, height: 18)
         editor.string = text
         editor.delegate = context.coordinator
@@ -59,7 +60,12 @@ struct MarkdownTextEditor: NSViewRepresentable {
     }
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
-        guard let editor = scroll.documentView as? NSTextView, editor.string != text else { return }
+        context.coordinator.parent = self
+        guard let editor = scroll.documentView as? NSTextView else { return }
+        if editor.font?.pointSize != CGFloat(fontSize) {
+            editor.font = .monospacedSystemFont(ofSize: fontSize, weight: .regular)
+        }
+        guard editor.string != text else { return }
         let selection = editor.selectedRange()
         editor.string = text
         editor.setSelectedRange(NSRange(location: min(selection.location, text.utf16.count), length: 0))

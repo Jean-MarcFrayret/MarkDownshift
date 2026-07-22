@@ -1,5 +1,10 @@
 # MarkDownshift Changelog
 
+## [1.3.0] - 2026-07-22
+
+- Added synchronized editor and preview zoom controls
+- Added `⌘−`, `⌘0`, and `⌘+` zoom shortcuts
+
 ## [1.2.0] - 2026-07-21
 
 - Added native multi-document windows
